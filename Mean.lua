@@ -1,5 +1,4 @@
--- Crack.lua (Rayfield-safe fully async version)
-
+-- Crack.lua
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
