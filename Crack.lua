@@ -1,4 +1,4 @@
--- Crack.lua
+-- Crack.lua 
 
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -102,7 +102,7 @@ local function exportJSON(plr)
     writefile("Crack_"..plr.UserId..".json", HttpService:JSONEncode(info))
 end
 
--- Create a player tab safely
+-- Create a player tab asynchronously
 local function playerTab(plr)
     local Tab = Window:CreateTab("["..plr.Name.."]("..plr.DisplayName..")", 4483362458)
 
@@ -119,37 +119,40 @@ local function playerTab(plr)
     local groupsP = Tab:CreateParagraph({Title="Groups", Content="Loading..."})
     local descP = Tab:CreateParagraph({Title="Description", Content="Loading..."})
 
-    -- Info button
+    -- Info button triggers async fetch
     Tab:CreateButton({
-        Name = "Info",
-        Callback = function()
-            local ok, info = pcall(getPlayerInfo, plr)
-            if not ok or not info then return end
+        Name="Info",
+        Callback=function()
+            spawn(function() -- async fetch
+                local ok, info = pcall(getPlayerInfo, plr)
+                if not ok or not info then return end
 
-            -- Update all fields
-            local okThumb, thumb = pcall(function()
-                return Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+                local okThumb, thumb = pcall(function()
+                    return Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+                end)
+
+                pcall(function()
+                    if okThumb and thumb then thumbP:Set("Thumbnail", thumb) end
+                    countryP:Set("Country", info.Country.." ("..info.CountryCode..")")
+                    friendsP:Set("Friends", tostring(info.Friends))
+                    mutualP:Set("Mutual Friends", tostring(info.MutualFriends))
+                    badgesP:Set("Badges", tostring(info.Badges))
+                    createdP:Set("Account Created", info.Created)
+                    ageP:Set("Account Age (Days)", tostring(info.AccountAge))
+                    useridP:Set("UserId", tostring(info.UserId))
+                    prevNamesP:Set("Previous Usernames", #info.PreviousUsernames>0 and table.concat(info.PreviousUsernames,", ") or "None")
+                    groupsP:Set("Groups", #info.Groups>0 and table.concat(info.Groups,"\n") or "None")
+                    descP:Set("Description", info.Description~="" and info.Description or "None")
+                end)
             end)
-            if okThumb and thumb then thumbP:Set("Thumbnail", thumb) end
-
-            countryP:Set("Country", info.Country.." ("..info.CountryCode..")")
-            friendsP:Set("Friends", tostring(info.Friends))
-            mutualP:Set("Mutual Friends", tostring(info.MutualFriends))
-            badgesP:Set("Badges", tostring(info.Badges))
-            createdP:Set("Account Created", info.Created)
-            ageP:Set("Account Age (Days)", tostring(info.AccountAge))
-            useridP:Set("UserId", tostring(info.UserId))
-            prevNamesP:Set("Previous Usernames", #info.PreviousUsernames>0 and table.concat(info.PreviousUsernames,", ") or "None")
-            groupsP:Set("Groups", #info.Groups>0 and table.concat(info.Groups,"\n") or "None")
-            descP:Set("Description", info.Description~="" and info.Description or "None")
         end
     })
 
-    -- JSON export
+    -- JSON export button
     Tab:CreateButton({
-        Name = "Export OSINT (JSON)",
-        Callback = function()
-            pcall(exportJSON, plr)
+        Name="Export OSINT (JSON)",
+        Callback=function()
+            spawn(function() pcall(exportJSON, plr) end)
         end
     })
 end
@@ -160,7 +163,7 @@ PlayersTab:CreateInput({
     PlaceholderText="Username or Display Name",
     RemoveTextAfterFocusLost=false,
     Callback=function(text)
-        text=string.lower(text)
+        text = string.lower(text)
         for plr,btn in pairs(PlayerButtons) do
             btn:SetVisible(text=="" or string.find(string.lower(plr.Name),text) or string.find(string.lower(plr.DisplayName),text))
         end
